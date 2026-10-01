@@ -33,10 +33,11 @@ std::vector<Interface> interfaces() {
     std::vector<Interface> output;
     for (ULONG i = 0; i < table->NumEntries; ++i) {
         const auto& row = table->Table[i];
+        if (row.InterfaceAndOperStatusFlags.FilterInterface) continue;
         Interface item;
         item.id = std::to_string(row.InterfaceLuid.Value);
         item.name = utf8(row.Alias);
-        item.type = row.Type == IF_TYPE_IEEE80211 ? "Wi-Fi" : row.Type == IF_TYPE_ETHERNET_CSMACD ? "Ethernet" : row.Type == IF_TYPE_SOFTWARE_LOOPBACK ? "Loopback" : "Virtual / other";
+        item.type = row.Type == IF_TYPE_SOFTWARE_LOOPBACK ? "Loopback" : !row.InterfaceAndOperStatusFlags.HardwareInterface ? "Virtual / other" : row.Type == IF_TYPE_IEEE80211 ? "Wi-Fi" : row.Type == IF_TYPE_ETHERNET_CSMACD ? "Ethernet" : "Virtual / other";
         item.up = row.OperStatus == IfOperStatusUp;
         item.received = row.InOctets; item.sent = row.OutOctets; item.link_bps = row.ReceiveLinkSpeed;
         if (result == NO_ERROR) for (auto* a = adapters; a; a = a->Next) {
