@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <array>
 #include <cctype>
+#include <chrono>
 #include <stdexcept>
 
 namespace home {
@@ -39,7 +40,15 @@ DnsPacket error_response(const DnsPacket& q,unsigned code,size_t end=0) {
     if(end) {p[5]=1;p.insert(p.end(),q.begin()+12,q.begin()+end);} return p;
 }
 bool ready(SOCKET s,int millis) { fd_set r{};FD_ZERO(&r);FD_SET(s,&r);timeval t{millis/1000,(millis%1000)*1000};return select(0,&r,nullptr,nullptr,&t)>0; }
-bool receive_exact(SOCKET s,char* p,int count) { while(count) {int got=recv(s,p,count,0);if(got<=0)return false;p+=got;count-=got;}return true; }
+bool receive_exact(SOCKET s,char* p,int count) {
+    auto deadline=std::chrono::steady_clock::now()+std::chrono::seconds(1);
+    while(count) {
+        auto remaining=std::chrono::duration_cast<std::chrono::milliseconds>(deadline-std::chrono::steady_clock::now()).count();
+        if(remaining<=0 || !ready(s,static_cast<int>(remaining)))return false;
+        int got=recv(s,p,count,0);if(got<=0)return false;p+=got;count-=got;
+    }
+    return true;
+}
 bool send_exact(SOCKET s,const char* p,int count) { while(count) {int sent=send(s,p,count,0);if(sent<=0)return false;p+=sent;count-=sent;}return true; }
 }
 DnsPacket dns_query(const std::string& input) {
